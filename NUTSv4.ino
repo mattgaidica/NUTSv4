@@ -13,7 +13,7 @@ const int STEP1B = 7;
 const int STEP2A = 11;
 const int STEP2B = 12;
 const int HIGHSPEED = 45;
-const int LOWSPEED = 10;
+const int LOWSPEED = 30;
 const int stepsPerRevolution = 200;
 Stepper myStepper(stepsPerRevolution, STEP1A, STEP1B, STEP2A, STEP2B);
 
@@ -22,7 +22,7 @@ bool dispensingNut = false;
 bool nutSensed = false;
 bool startUp = true;
 unsigned long startTime = millis();
-const int waitMs = 5000;
+const int waitMs = 10 * 1000; // sec *1000
 int nextTrys = 0;
 
 void setup() {
@@ -66,21 +66,21 @@ void loop() {
   } else {
     unsigned long currentTime = millis();
     if ((currentTime - startTime) > waitMs) {
-      if (!digitalRead(IRDET)) { // fill the port
+      if (!digitalRead(IRDET)) { // if empty
         nextNut();
         if (!nutSensed) { // did something come out?
           nextTrys++;
         } else { // sure did, exit
           nextTrys = 0;
-          startTime = millis();
+          //          startTime = millis();
         }
         if (nextTrys == 10) {
           nextTrys = 0;
           startUp = true; // nuts empty
         }
-      } else {
+      } else { // if full
         nextTrys = 0;
-        startTime = millis();
+        //        startTime = millis();
       }
     }
 
@@ -111,9 +111,11 @@ void magnetDisplay() {
 void IRbreak() {
   digitalWrite(BUTTON, digitalRead(IRDET));
   if (dispensingNut) {
-//    if (digitalRead(IRDET)) {
-      nutSensed = true;
-//    }
+    //    if (digitalRead(IRDET)) {
+    nutSensed = true;
+    //    }
+  } else {
+    startTime = millis();
   }
 }
 
