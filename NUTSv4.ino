@@ -12,8 +12,8 @@ const int STEP1A = 6;
 const int STEP1B = 7;
 const int STEP2A = 11;
 const int STEP2B = 12;
-const int HIGHSPEED = 45;
-const int LOWSPEED = 30;
+const int HIGHSPEED = 60;
+const int LOWSPEED = 20;
 const int stepsPerRevolution = 200;
 Stepper myStepper(stepsPerRevolution, STEP1A, STEP1B, STEP2A, STEP2B);
 
@@ -24,6 +24,7 @@ bool startUp = true;
 unsigned long startTime = millis();
 const int waitMs = 10 * 1000; // sec *1000
 int nextTrys = 0;
+int dir = 1; // clockwise
 
 void setup() {
   Serial.begin(9600);
@@ -122,32 +123,30 @@ void IRbreak() {
 void nextNut() {
   nutSensed = false;
   dispensingNut = true;
-  // kick out of sensor area
-  if (!digitalRead(MAGNET)) {
-    myStepper.step(15);
-  }
+  // kick out of sensor area at least 1/4 rotation
+  myStepper.step(dir * stepsPerRevolution / 4);
+  
   int trys = 0;
+  int nStep = 2;
   while (digitalRead(MAGNET)) {
-    myStepper.step(5);
+    myStepper.step(dir * nStep);
     trys++;
-    if (trys % 10 == 0) {
-      unjam();
-    }
-    if (trys > 100) {
-      break; // something is wrong
+    if (trys % (stepsPerRevolution / nStep) == 0) {
+      break; // failed to spin 1 revolution
     }
   }
-  // go extra, get out of sensor range
+  // go extra, shake
   myStepper.setSpeed(LOWSPEED);
-  myStepper.step(10);
+  myStepper.step(dir * 10);
   myStepper.setSpeed(HIGHSPEED);
   stepperOff();
-  delay(200);
+  delay(200); // nut falling
   dispensingNut = false;
+  dir = -dir;
 }
 
 void unjam() {
-  myStepper.step(-20);
+  myStepper.step(-dir * 20);
 }
 
 void sensedMagnet() {
