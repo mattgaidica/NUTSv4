@@ -21,8 +21,8 @@ Stepper myStepper(stepsPerRevolution, STEP1A, STEP1B, STEP2A, STEP2B);
 bool dispensingNut = false;
 bool nutSensed = false;
 bool startUp = true;
+const int waitMs = 60 * 1000; // sec *1000
 unsigned long startTime = millis();
-const int waitMs = 10 * 1000; // sec *1000
 int nextTrys = 0;
 int dir = 1; // clockwise
 
@@ -61,7 +61,7 @@ void loop() {
       blinkFast(BUTTON, 10);
       attachInterrupt(digitalPinToInterrupt(IRDET), IRbreak, CHANGE);
       IRbreak(); // init
-      startTime = millis();
+      startTime = millis() + waitMs; // forces nextNut on startup
     }
     pinMode(BUTTON, OUTPUT);
   } else {
@@ -125,7 +125,7 @@ void nextNut() {
   dispensingNut = true;
   // kick out of sensor area at least 1/4 rotation
   myStepper.step(dir * stepsPerRevolution / 4);
-  
+
   int trys = 0;
   int nStep = 2;
   while (digitalRead(MAGNET)) {
