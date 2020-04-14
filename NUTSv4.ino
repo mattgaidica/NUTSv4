@@ -3,7 +3,7 @@
 // GPIO
 const int BUTTON = 0; // active LOW, use INPUT_PULLUP
 const int MAGNET = 2; // active LOW, INPUT_PULLUP
-const int IRDET = 5; // active LOW, should remove pull-up on PCB
+const int photo = 5; // active LOW, should remove pull-up on PCB
 const int LED1 = 8;
 const int LED2 = 13;
 
@@ -19,11 +19,10 @@ Stepper myStepper(stepsPerRevolution, STEP1A, STEP1B, STEP2A, STEP2B);
 
 // operational variables
 bool dispensingNut = false;
-bool nutSensed = false;
+bool attendedTo = true; // dispense at startup
 bool startUp = true;
 const int waitMs = 60 * 1000; // sec *1000
 unsigned long startTime = millis();
-int nextTrys = 0;
 int dir = 1; // clockwise
 
 void setup() {
@@ -31,7 +30,7 @@ void setup() {
   myStepper.setSpeed(HIGHSPEED);
   pinMode(BUTTON, OUTPUT);
   pinMode(MAGNET, INPUT_PULLUP);
-  pinMode(IRDET, INPUT_PULLUP);
+  pinMode(photo, INPUT_PULLUP);
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   digitalWrite(LED1, LOW);
@@ -59,30 +58,16 @@ void loop() {
       startUp = false;
       pinMode(BUTTON, OUTPUT);
       blinkFast(BUTTON, 10);
-      attachInterrupt(digitalPinToInterrupt(IRDET), IRbreak, CHANGE);
-      IRbreak(); // init
+      attachInterrupt(digitalPinToInterrupt(photo), attention, CHANGE);
+      attention(); // init
       startTime = millis() + waitMs; // forces nextNut on startup
     }
     pinMode(BUTTON, OUTPUT);
   } else {
     unsigned long currentTime = millis();
-    if ((currentTime - startTime) > waitMs) {
-      if (!digitalRead(IRDET)) { // if empty
-        nextNut();
-        if (!nutSensed) { // did something come out?
-          nextTrys++;
-        } else { // sure did, exit
-          nextTrys = 0;
-          //          startTime = millis();
-        }
-        if (nextTrys == 10) {
-          nextTrys = 0;
-          startUp = true; // nuts empty
-        }
-      } else { // if full
-        nextTrys = 0;
-        //        startTime = millis();
-      }
+    if ((currentTime - startTime) > waitMs && attendedTo) {
+      nextNut(); // ASSUME IT DISPENSES
+      startTime = millis();
     }
 
     digitalWrite(LED1, HIGH);
@@ -105,23 +90,16 @@ void magnetDisplay() {
   digitalWrite(LED2, digitalRead(MAGNET));
 }
 
-//bool nutPresent() {
-//  return nutSensed || digitalRead(IRDET);
-//}
-
-void IRbreak() {
-  digitalWrite(BUTTON, digitalRead(IRDET));
-  if (dispensingNut) {
-    //    if (digitalRead(IRDET)) {
-    nutSensed = true;
-    //    }
-  } else {
+void attention() {
+  digitalWrite(BUTTON, !digitalRead(photo));
+  if (attendedTo) {
     startTime = millis();
+  } else {
+    attendedTo = true;
   }
 }
 
 void nextNut() {
-  nutSensed = false;
   dispensingNut = true;
   // kick out of sensor area at least 1/4 rotation
   myStepper.step(dir * stepsPerRevolution / 4);
@@ -140,9 +118,9 @@ void nextNut() {
   myStepper.step(dir * 10);
   myStepper.setSpeed(HIGHSPEED);
   stepperOff();
-  delay(200); // nut falling
   dispensingNut = false;
   dir = -dir;
+  attendedTo = false;
 }
 
 void unjam() {
