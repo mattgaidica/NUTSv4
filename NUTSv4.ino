@@ -67,7 +67,6 @@ void loop() {
     unsigned long currentTime = millis();
     if ((currentTime - startTime) > waitMs && attendedTo) {
       nextNut(); // ASSUME IT DISPENSES
-      startTime = millis();
     }
 
     digitalWrite(LED1, HIGH);
@@ -118,8 +117,10 @@ void nextNut() {
   myStepper.step(dir * 10);
   myStepper.setSpeed(HIGHSPEED);
   stepperOff();
+  delay(200); // nut falling, might activate sensor
   dispensingNut = false;
   dir = -dir;
+  attention(); // update sensor display, reset startTime
   attendedTo = false;
 }
 
